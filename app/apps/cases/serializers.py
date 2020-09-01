@@ -192,3 +192,16 @@ class CaseTimelineSerializer(serializers.ModelSerializer):
     class Meta:
         model = CaseTimelineSubject
         fields = "__all__"
+
+
+class CaseThreadCreationSerializer(serializers.Serializer):
+    case_identification = serializers.CharField(max_length=50)
+    subject = serializers.CharField(max_length=255)
+    parameters = serializers.JSONField()
+    notes = serializers.CharField()
+
+
+class CaseThreadUpdateSerializer(serializers.Serializer):
+    parameters = serializers.JSONField()
+    notes = serializers.CharField()
+    thread_id = serializers.IntegerField(min_value=0)

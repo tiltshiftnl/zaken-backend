@@ -14,6 +14,8 @@ from apps.cases.models import (
 from apps.cases.serializers import (
     AddressSerializer,
     CaseSerializer,
+    CaseThreadCreationSerializer,
+    CaseThreadUpdateSerializer,
     CaseTimelineReactionSerializer,
     CaseTimelineSerializer,
     CaseTimelineSubjectSerializer,
@@ -230,3 +232,77 @@ class CaseTimeLineThreadViewSet(ModelViewSet):
 class CaseTimeLineReactionViewSet(ModelViewSet):
     serializer_class = CaseTimelineReactionSerializer
     queryset = CaseTimelineReaction
+
+
+case_identification = OpenApiParameter(
+    name="case_identification",
+    type=OpenApiTypes.STR,
+    location=OpenApiParameter.QUERY,
+    required=True,
+    description="identification of an OpenZaak Case",
+)
+
+subject = OpenApiParameter(
+    name="subject",
+    type=OpenApiTypes.STR,
+    location=OpenApiParameter.QUERY,
+    required=True,
+    description="Subject of the timeline update",
+)
+
+parameters = OpenApiParameter(
+    name="parameters",
+    type=OpenApiTypes.STR,
+    location=OpenApiParameter.QUERY,
+    required=True,
+    description="Parameters ",
+)
+
+
+thread_request_parameters = [case_identification, subject]
+
+
+class TimeLineAutomatedViewSet(ViewSet):
+    """
+    Gateway for automated thread updates
+    """
+
+    @extend_schema(
+        request=CaseThreadCreationSerializer,
+        description=(
+            "Request to create a timeline thread object by non humans (auto reporting)"
+        ),
+    )
+    @action(detail=False)
+    def add_thread(self, request):
+        case = Case.objects.get(identification=request.POST.get("case_identification"))
+        case_subject = CaseTimelineSubject.objects.get_or_create(
+            subject=request.POST.get("subject"), case=case
+        )
+        case_thread = CaseTimelineThread(
+            subject=case_subject,
+            parameters=request.POST.get("parameters"),
+            notes=request.POST.get("notes"),
+        )
+
+        case_thread.save()
+        return case_thread
+
+    @extend_schema(
+        request=CaseThreadUpdateSerializer,
+        description=(
+            "Request to update a timeline thread object by non humans (auto reporting)"
+        ),
+    )
+    @action(detail=False)
+    def update_thread(self, request):
+        try:
+            case_thread = CaseTimelineThread.objects.get(
+                id=request.POST.get("thread_id")
+            )
+        except CaseTimelineThread.DoesNotExist:
+            return
+        case_thread.parameters = request.POST.get("parameters")
+        case_thread.notes = request.POST.get("notes")
+        case_thread.save()
+        return case_thread
